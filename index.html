@@ -4,11 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#05080d" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>GOD'S EYE · Küresel Gözlem Konsolu</title>
-  <meta name="description" content="Açık ve canlı verilerle 3D dünya: uçuşlar, uydular, depremler." />
+  <meta name="description" content="Açık ve canlı verilerle 3D dünya: uçuşlar, uydular, depremler, doğal olaylar, hava, kablolar, kameralar." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='none' stroke='%2300e5ff' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='9' fill='%2300e5ff'/%3E%3C/svg%3E" />
-  <script type="module" crossorigin src="/gods-eye/assets/index-DHal1iHz.js"></script>
-  <link rel="stylesheet" crossorigin href="/gods-eye/assets/index-DlQxERoL.css">
+  <script type="module" crossorigin src="/gods-eye/assets/index-DqrgNMo6.js"></script>
+  <link rel="stylesheet" crossorigin href="/gods-eye/assets/index-DNyHH2h0.css">
 </head>
 <body>
   <div id="loader">
@@ -85,13 +89,35 @@
       </div>
     </section>
     <section>
+      <h2>İSTİHBARAT <small>INTEL</small></h2>
+      <label class="layer"><input type="checkbox" id="l-events" checked /><span class="dot c-event"></span>Doğal olaylar (NASA) <em id="n-events">0</em></label>
+      <label class="layer"><input type="checkbox" id="l-wx" /><span class="dot c-wx"></span>Hava durumu (Open-Meteo)</label>
+      <div class="sub"><span>Açıkken haritaya tıklayın → o noktanın anlık havası</span></div>
+      <label class="layer"><input type="checkbox" id="l-radar" /><span class="dot c-radar"></span>Yağış radarı (RainViewer)</label>
+      <label class="layer"><input type="checkbox" id="l-rail" /><span class="dot c-rail"></span>İstanbul raylı sistem (İBB)</label>
+      <label class="layer"><input type="checkbox" id="l-cables" /><span class="dot c-cable"></span>Denizaltı kabloları <em id="n-cables"></em></label>
+      <label class="layer"><input type="checkbox" id="l-dc" /><span class="dot c-dc"></span>Veri merkezleri <em id="n-dc"></em></label>
+      <label class="layer"><input type="checkbox" id="l-cctv" /><span class="dot c-cctv"></span>Trafik kameraları <em id="n-cctv"></em></label>
+      <div class="sub"><span>Kamu yol kameraları: Caltrans (Kaliforniya), Austin TX</span></div>
+      <label class="layer"><input type="checkbox" id="l-news" checked /><span class="dot c-news"></span>Haber bandı</label>
+      <div class="media-row"><select id="media-select" title="TRT canlı yayın"></select><button id="media-open">▶ CANLI TV/RADYO</button></div>
+    </section>
+    <section>
+      <h2>GÖRÜNÜM <small>VIEW</small></h2>
+      <div class="seg" id="mode"><button data-m="real" class="on">Gerçekçi</button><button data-m="tactical">Taktik</button></div>
+      <label class="layer"><input type="checkbox" id="l-3d" checked /><span class="dot c-3d"></span>Fotogerçekçi 3D (Google) <em id="l-3d-hint" class="hint"></em></label>
+      <label class="layer"><input type="checkbox" id="l-night" checked /><span class="dot c-night"></span>Gece ışıkları (NASA)</label>
+      <label class="sub-inline">Sahne <select id="scene-select">
+        <option value="">— uç —</option>
+        <option value="globe">Küresel görünüm</option><option value="tr">Türkiye</option><option value="ist">İstanbul Boğazı</option>
+        <option value="canakkale">Çanakkale Boğazı</option><option value="ankara">Ankara</option><option value="kapadokya">Kapadokya</option>
+        <option value="medi">Doğu Akdeniz</option><option value="se">Güneydoğu</option>
+      </select></label>
       <h2>HARİTA <small>BASEMAP</small></h2>
-      <div class="seg" id="basemap">
-        <button data-b="dark" class="on">Karanlık</button><button data-b="sat">Uydu</button><button data-b="osm">OSM</button>
-      </div>
+      <div class="seg" id="basemap"></div>
       <h2>FİLTRE <small>SENSOR</small></h2>
       <div class="seg" id="look">
-        <button data-l="none" class="on">Normal</button><button data-l="nvg">NVG</button><button data-l="flir">FLIR</button><button data-l="crt">CRT</button>
+        <button data-l="none" class="on">Normal</button><button data-l="nvg">NVG</button><button data-l="flir">FLIR</button><button data-l="crt">CRT</button><button data-l="anime">Anime</button><button data-l="noir">Noir</button><button data-l="snow">Kar</button>
       </div>
     </section>
     <section class="feeds">
@@ -99,8 +125,12 @@
       <div id="feed-flights" class="feed">UÇUŞ · bekleniyor…</div>
       <div id="feed-sats" class="feed">UYDU · bekleniyor…</div>
       <div id="feed-quakes" class="feed">DEPREM · bekleniyor…</div>
+      <div id="feed-events" class="feed">OLAY · bekleniyor…</div>
+      <div id="feed-wx" class="feed">HAVA · kapalı</div>
+      <div id="feed-news" class="feed">HABER · bekleniyor…</div>
+      <div id="feed-3d" class="feed">3D · bekleniyor…</div>
     </section>
-    <footer>Veri: OpenSky Network, adsb.lol, CelesTrak, USGS · Harita: Esri, © OpenStreetMap katkıcıları.<br/>Esinlenme: <a href="https://github.com/bilawalsidhu/gods-eye-view" target="_blank" rel="noopener">gods-eye-view</a> (MIT).</footer>
+    <footer>Veri: OpenSky Network, adsb.lol, CelesTrak, USGS, NASA EONET, Open-Meteo (CC BY 4.0), RainViewer, İBB Açık Veri, TeleGeography Submarine Cable Map (CC BY-NC-SA 3.0), PeeringDB, Caltrans CWWP2, City of Austin Open Data, TRT, BBC Türkçe · Harita: Esri, NASA GIBS Black Marble, © OpenStreetMap katkıcıları; token ile Google Photorealistic 3D Tiles, Cesium World Terrain, Bing (ion).<br/>Esinlenme: <a href="https://github.com/bilawalsidhu/gods-eye-view" target="_blank" rel="noopener">gods-eye-view</a> (MIT).</footer>
   </aside>
   <button id="panel-toggle" title="Paneli aç/kapat">☰</button>
 
@@ -109,6 +139,7 @@
     <div id="info-kind"></div>
     <h3 id="info-title"></h3>
     <dl id="info-body"></dl>
+    <div id="info-extra"></div>
     <div class="actions"><button id="info-track">TAKİP ET</button><button id="info-fly">YAKLAŞ</button></div>
   </aside>
 
@@ -120,6 +151,11 @@
   </div>
   <div id="reticle"></div>
   <div id="toast" hidden></div>
+  <div id="media" hidden>
+    <div class="media-head"><span id="media-title">CANLI</span><button id="media-close" title="Kapat">×</button></div>
+    <video id="media-video" controls playsinline autoplay></video>
+  </div>
+  <div id="ticker" hidden><span class="tlabel">SON DAKİKA</span><div class="tview"><div id="ticker-track"></div></div></div>
 
 </body>
 </html>

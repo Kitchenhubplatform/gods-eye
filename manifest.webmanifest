@@ -1,0 +1,17 @@
+{
+  "name": "GOD'S EYE · Küresel Gözlem Konsolu",
+  "short_name": "God's Eye",
+  "description": "Açık ve canlı verilerle 3D dünya: uçuşlar, uydular, depremler, doğal olaylar, hava, kablolar, kameralar.",
+  "lang": "tr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#03060a",
+  "theme_color": "#05080d",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
