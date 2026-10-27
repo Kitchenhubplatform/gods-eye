@@ -3,3 +3,5 @@ dist
 .vercel
 dist-pages
 deploy-args.json
+.env.local
+.env.*.local

@@ -1,7 +1,7 @@
 {
   "name": "gods-eye",
   "version": "1.0.0",
-  "description": "G\u00f6z \u2014 a\u00e7\u0131k veriyle canl\u0131 3D k\u00fcre / live open-data 3D globe",
+  "description": "Göz — açık veriyle canlı 3D küre / live open-data 3D globe",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -13,6 +13,7 @@
   "type": "module",
   "dependencies": {
     "cesium": "^1.140.0",
+    "hls.js": "^1.7.3",
     "satellite.js": "^5.0.0"
   },
   "devDependencies": {

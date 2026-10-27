@@ -78,3 +78,43 @@ a{color:var(--cyan)}
 }
 select{min-width:0;max-width:100%}
 @media (max-width:760px){#search{min-width:0}#search button{padding:0 10px}}
+
+.c-3d{background:#7cff8a;box-shadow:0 0 6px #7cff8a}.c-night{background:#ffd27a;box-shadow:0 0 6px #ffd27a}
+.layer em.hint{font-size:10px;color:var(--dim);max-width:110px;text-align:right}
+.sub-inline{display:flex;align-items:center;gap:6px;color:var(--dim);margin:4px 0 12px}
+#basemap{flex-wrap:wrap}#basemap button{min-width:25%}
+html.mode-real #scanlines{display:none}
+html.mode-real #reticle{opacity:.35}
+
+.c-event{background:#ff6a00;box-shadow:0 0 6px #ff6a00}.c-wx{background:#9fe8ff;box-shadow:0 0 6px #9fe8ff}.c-radar{background:#3fa9ff;box-shadow:0 0 6px #3fa9ff}
+.c-rail{background:#e8333a;box-shadow:0 0 6px #e8333a}.c-cable{background:#00b3a4;box-shadow:0 0 6px #00b3a4}.c-dc{background:#ffe14d;box-shadow:0 0 6px #ffe14d}
+.c-cctv{background:#ff3df2;box-shadow:0 0 6px #ff3df2}.c-news{background:#fff;box-shadow:0 0 6px #fff}
+.sub span{font-size:10px;line-height:1.4}
+.media-row{display:flex;gap:6px;margin-top:8px}.media-row button{background:var(--cyan);color:#001318;border:0;font:inherit;font-weight:700;padding:4px 8px;cursor:pointer;white-space:nowrap}
+#look{flex-wrap:wrap}#look button{min-width:25%}
+#globe.anime canvas{filter:saturate(1.9) contrast(1.25) brightness(1.08)}
+#globe.noir canvas{filter:grayscale(1) contrast(1.55) brightness(.92)}
+#globe.snow canvas{filter:saturate(.35) brightness(1.35) contrast(.92) hue-rotate(-8deg)}
+#info-extra .cam-img{width:100%;display:block;border:1px solid var(--line);margin:0 0 10px;background:#000;min-height:120px}
+#info-extra .cam-off{color:var(--dim);font-size:11px}
+.cam-live{width:100%;margin:0 0 10px;background:transparent;border:1px solid var(--cyan);color:var(--cyan);font:inherit;padding:6px;cursor:pointer}
+#media{position:fixed;right:12px;bottom:76px;width:340px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--amber);z-index:5;backdrop-filter:blur(10px)}
+#media .media-head{display:flex;justify-content:space-between;align-items:center;padding:4px 8px;color:var(--amber);letter-spacing:.12em;font-size:11px}
+#media .media-head button{background:none;border:0;color:var(--dim);font-size:18px;cursor:pointer}
+#media video{width:100%;display:block;background:#000;max-height:200px}
+#ticker{position:fixed;left:0;right:0;bottom:0;height:22px;display:flex;align-items:center;background:rgba(3,6,10,.92);border-top:1px solid var(--line);z-index:5;font-size:11px;overflow:hidden}
+#ticker .tlabel{background:var(--red);color:#fff;font-weight:700;letter-spacing:.12em;padding:0 8px;height:100%;display:flex;align-items:center;white-space:nowrap}
+#ticker .tview{flex:1;overflow:hidden;white-space:nowrap}
+#ticker-track{display:inline-block;padding-left:100%;animation:tick 120s linear infinite}
+#ticker:hover #ticker-track{animation-play-state:paused}
+#ticker-track a{color:var(--txt);text-decoration:none}#ticker-track a b{color:var(--amber);margin-right:4px}#ticker-track i{color:var(--cyan);margin:0 14px;font-style:normal}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+html.has-ticker .cesium-viewer-bottom{bottom:22px}
+html.has-ticker #hud{bottom:32px}
+html.has-ticker #panel{bottom:30px}
+@media (max-width:760px){
+  #media{left:8px;right:8px;width:auto;top:calc(100px + env(safe-area-inset-top));bottom:auto}
+  html.has-ticker #hud{bottom:calc(28px + env(safe-area-inset-bottom))}
+  html.has-ticker #panel{bottom:22px}
+  #ticker{padding-bottom:env(safe-area-inset-bottom);height:calc(22px + env(safe-area-inset-bottom))}
+}

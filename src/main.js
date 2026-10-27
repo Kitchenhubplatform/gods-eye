@@ -1,6 +1,10 @@
 import * as Cesium from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import './style.css';
+import { readTokens, createRealism } from './realism.js';
+import { toMgrs } from './mgrs.js';
+import { createExtras } from './extras.js';
+let extras = null;
 import { twoline2satrec, propagate, gstime, eciToEcf, eciToGeodetic, degreesLat, degreesLong } from 'satellite.js';
 
 // STATIC build (GitHub Pages etc.): no serverless /api — browser talks to CORS-enabled sources directly.
@@ -40,12 +44,8 @@ async function getText(url, ms = 30000) {
 }
 
 // ───────────────────────────── viewer ─────────────────────────────
-// No Cesium ion: free tile providers only, plain WGS84 ellipsoid terrain.
-const BASEMAPS = {
-  dark: () => new Cesium.UrlTemplateImageryProvider({ url: 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', maximumLevel: 16, credit: 'Esri, HERE, Garmin, © OpenStreetMap contributors' }),
-  sat: () => new Cesium.UrlTemplateImageryProvider({ url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', maximumLevel: 19, credit: 'Esri, Maxar, Earthstar Geographics' }),
-  osm: () => new Cesium.OpenStreetMapImageryProvider({ url: 'https://tile.openstreetmap.org/' }),
-};
+// Tokens (Cesium ion / Google Map Tiles) are optional; without them everything runs on free Esri + NASA GIBS tiles.
+const TOKENS = readTokens();
 
 // Phones / low-power devices get a lighter default (fewer satellites, on-demand rendering, slower propagation).
 const LOW_POWER = (() => {
@@ -61,7 +61,7 @@ const fatal = (title, detail) => window.__gePageError?.(title, detail);
 let viewer;
 try {
   viewer = new Cesium.Viewer('globe', {
-    baseLayer: new Cesium.ImageryLayer(BASEMAPS.dark()),
+    baseLayer: false,
     baseLayerPicker: false, geocoder: false, homeButton: false, sceneModePicker: false, navigationHelpButton: false,
     animation: false, timeline: false, fullscreenButton: false, infoBox: false, selectionIndicator: false,
     terrainProvider: new Cesium.EllipsoidTerrainProvider(),
@@ -77,8 +77,6 @@ try {
 const scene = viewer.scene;
 viewer.resolutionScale = 1;
 scene.backgroundColor = Cesium.Color.BLACK;
-scene.globe.baseColor = Cesium.Color.fromCssColorString('#04070b');
-scene.globe.showGroundAtmosphere = !LOW_POWER;
 scene.fog.enabled = true;
 scene.postProcessStages.fxaa.enabled = !LOW_POWER;
 if (LOW_POWER) { scene.globe.maximumScreenSpaceError = 3; scene.globe.tileCacheSize = 60; }
@@ -87,6 +85,9 @@ scene.canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); f
 // first frame rendered → hide loading screen
 const offFirst = scene.postRender.addEventListener(() => { offFirst(); window.__geReady?.(); });
 const requestRender = () => scene.requestRender();
+const realism = createRealism({ viewer, LOW_POWER, toast, requestRender, autoBasemap: true,
+  onStatus: (text, state) => feedStatus('feed-3d', state, text),
+  onBasemapsChanged: () => { renderBasemapButtons(); if (!realism.state.tiles3d) { $('l-3d').checked = false; $('l-3d').disabled = true; $('l-3d-hint').textContent = 'token geçersiz'; } } }, TOKENS);
 viewer.cesiumWidget.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
 
 // Restore camera from URL hash (#lat,lon,altMeters) or start over Türkiye.
@@ -124,7 +125,7 @@ function select(kind, key, fly = false) {
   requestRender();
 }
 function deselect() {
-  unhighlight(); selected = null; tracking = false; orbitLines.removeAll();
+  unhighlight(); selected = null; tracking = false; orbitLines.removeAll(); extras?.onDeselect(); $('info-extra').innerHTML = '';
   viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY); $('info').hidden = true;
 }
 $('info-close').onclick = deselect;
@@ -138,10 +139,11 @@ function selectedPosition() {
   if (selected.kind === 'flight') return flights.get(selected.key)?.bb.position;
   if (selected.kind === 'sat') return sats.find((s) => s.id === selected.key)?.pt.position;
   if (selected.kind === 'quake') return quakes.get(selected.key)?.pt.position;
+  return extras?.info(selected)?.position;
 }
 function flyToSelected() {
   const p = selectedPosition(); if (!p) return;
-  const range = selected.kind === 'sat' ? 2.5e6 : selected.kind === 'flight' ? 9e4 : 6e5;
+  const range = selected.kind === 'sat' ? 2.5e6 : selected.kind === 'flight' ? 9e4 : selected.kind === 'quake' ? 6e5 : (extras?.info(selected)?.range || 6e5);
   viewer.camera.flyToBoundingSphere(new Cesium.BoundingSphere(p, 1), { offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-45), range), duration: 1.6 });
 }
 let lastTrackPos = null;
@@ -177,7 +179,16 @@ function renderInfo() {
     kind = 'DEPREM · EARTHQUAKE'; title = `M${p.mag?.toFixed(1)} · ${p.place || ''}`;
     rows.push(['Büyüklük', `${p.mag?.toFixed(1)} ${p.magType || ''}`], ['Derinlik', `${fmt(depth, 1)} km`], ['Zaman', new Date(p.time).toLocaleString('tr-TR')],
       ['Konum', `${lat.toFixed(3)}, ${lon.toFixed(3)}`], ['Tsunami', p.tsunami ? 'UYARI' : 'yok'], ['Durum', p.status], ['Bağlantı', `<a target="_blank" rel="noopener" href="${p.url}">USGS ↗</a>`]);
+  } else {
+    const r = extras?.info(selected); if (!r) return;
+    kind = r.kind; title = r.title; rows.push(...r.rows);
+    $('info-kind').textContent = kind; $('info-title').textContent = title;
+    $('info-body').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v ?? '—'}</dd>`).join('');
+    $('info-extra').innerHTML = r.html || ''; r.after?.();
+    $('info-track').hidden = true; $('info-fly').hidden = !r.position;
+    return;
   }
+  $('info-track').hidden = false; $('info-fly').hidden = false; $('info-extra').innerHTML = '';
   $('info-kind').textContent = kind; $('info-title').textContent = title;
   $('info-body').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
 }
@@ -187,7 +198,7 @@ pickHandler.setInputAction((e) => {
   const picked = scene.pick(e.position);
   const id = picked?.id ?? picked?.primitive?.id;
   if (window.innerWidth < 760) $('panel').classList.add('closed');
-  if (id && id.kind) select(id.kind, id.key); else deselect();
+  if (id && id.kind) select(id.kind, id.key); else { deselect(); extras?.onEmptyClick(e.position, select); }
 }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 pickHandler.setInputAction((e) => {
   const picked = scene.pick(e.endPosition);
@@ -400,8 +411,20 @@ function counts() {
 function hud() {
   const n = new Date(); $('utc').textContent = n.toISOString().slice(11, 19);
   const c = cameraCenter();
-  $('h-cam').textContent = `${Math.abs(c.lat).toFixed(2)}°${c.lat >= 0 ? 'K' : 'G'} ${Math.abs(c.lon).toFixed(2)}°${c.lon >= 0 ? 'D' : 'B'} · İRT ${fmt(c.alt / 1000)} km`;
+  $('h-cam').textContent = `${Math.abs(c.lat).toFixed(2)}°${c.lat >= 0 ? 'K' : 'G'} ${Math.abs(c.lon).toFixed(2)}°${c.lon >= 0 ? 'D' : 'B'} · MGRS ${toMgrs(c.lat, c.lon)} · İRT ${c.alt < 1e4 ? fmt(c.alt) + ' m' : fmt(c.alt / 1000) + ' km'}`;
 }
+
+// Fly-to scenes (ported from the OSIRIS "Sahneler" presets)
+const SCENES = {
+  globe: { lat: 30, lon: 32, alt: 1.6e7 },
+  tr: { lat: 39, lon: 35, alt: 1.6e6 },
+  ist: { lat: 41.045, lon: 29.03, alt: 1800 },
+  canakkale: { lat: 40.15, lon: 26.4, alt: 6000 },
+  kapadokya: { lat: 38.643, lon: 34.83, alt: 2500 },
+  ankara: { lat: 39.925, lon: 32.837, alt: 2000 },
+  medi: { lat: 35.2, lon: 33.5, alt: 6e5 },
+  se: { lat: 37.0, lon: 41.6, alt: 4e5 },
+};
 
 // ───────────────────────────── search ─────────────────────────────
 const results = $('search-results');
@@ -424,10 +447,24 @@ function showResults(items) {
 const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function flyTo(lat, lon, alt = 1.2e6, rect) {
   deselect();
-  if (rect) viewer.camera.flyTo({ destination: rect, duration: 2 });
-  else viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(lon, lat, alt), duration: 2 });
+  return realism.flyTo({ lat, lon, alt, rect });
 }
 async function geocode(q) {
+  if (realism.useGoogleGeocoder()) { // Google ToS: Photorealistic 3D Tiles are paired with the Google geocoder
+    try {
+      const r = await realism.geocoder.geocode(q);
+      return r.slice(0, 6).map((x) => ({ label: x.displayName, hint: '⌖ Google', go: () => {
+        deselect();
+        if (x.destination instanceof Cesium.Rectangle) {
+          const c = Cesium.Rectangle.center(x.destination); const w = Math.max(x.destination.width, x.destination.height);
+          if (w < 0.002) return realism.flyTo({ lat: Cesium.Math.toDegrees(c.latitude), lon: Cesium.Math.toDegrees(c.longitude), alt: 1500 });
+          return realism.flyTo({ rect: x.destination });
+        }
+        const cg = Cesium.Cartographic.fromCartesian(x.destination);
+        return realism.flyTo({ lat: Cesium.Math.toDegrees(cg.latitude), lon: Cesium.Math.toDegrees(cg.longitude), alt: 1500 });
+      } }));
+    } catch (e) { console.warn('Google geocoder failed', e); return []; }
+  }
   try {
     const r = await getJSON(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&accept-language=tr,en&q=${encodeURIComponent(q)}`, 8000);
     return r.map((p) => ({ label: p.display_name.split(',').slice(0, 3).join(','), hint: `⌖ ${p.type}`, go: () => { const b = p.boundingbox.map(Number); flyTo(+p.lat, +p.lon, 0, Cesium.Rectangle.fromDegrees(b[2], b[0], b[3], b[1])); } }));
@@ -467,10 +504,31 @@ $('sat-group').onchange = () => loadSats();
 $('sat-orbit').onchange = () => drawOrbit();
 $('l-quakes').onchange = () => { quakePoints.show = $('l-quakes').checked; for (const q of quakes.values()) q.pt.show = true; counts(); };
 $('quake-feed').onchange = () => loadQuakes();
-document.querySelectorAll('#basemap button').forEach((b) => (b.onclick = () => {
-  document.querySelectorAll('#basemap button').forEach((x) => x.classList.toggle('on', x === b));
-  viewer.imageryLayers.removeAll(); viewer.imageryLayers.addImageryProvider(BASEMAPS[b.dataset.b]()); requestRender();
-}));
+function renderBasemapButtons() {
+  const box = $('basemap'); box.innerHTML = '';
+  for (const [key, bm] of Object.entries(realism.basemaps)) {
+    const b = document.createElement('button'); b.textContent = bm.label; b.dataset.b = key;
+    b.classList.toggle('on', realism.state.basemap === key);
+    b.onclick = () => { realism.setAutoBasemap(false); realism.setBasemap(key).then(renderBasemapButtons); renderBasemapButtons(); };
+    box.appendChild(b);
+  }
+}
+function setMode(mode) {
+  realism.setAutoBasemap(true);
+  realism.setMode(mode);
+  document.querySelectorAll('#mode button').forEach((x) => x.classList.toggle('on', x.dataset.m === mode));
+  setTimeout(renderBasemapButtons, 50);
+}
+document.querySelectorAll('#mode button').forEach((b) => (b.onclick = () => setMode(b.dataset.m)));
+$('l-night').onchange = () => realism.setNight($('l-night').checked);
+$('l-3d').onchange = () => realism.setTiles($('l-3d').checked);
+if (!realism.hasTiles) { $('l-3d').checked = false; $('l-3d').disabled = true; $('l-3d-hint').textContent = 'token yok · ?ionToken= ile ekleyin'; feedStatus('feed-3d', 'warn', '3D · Google/ion token tanımlı değil (ücretsiz Esri modu)'); }
+else $('l-3d-hint').textContent = TOKENS.google ? 'Google Map Tiles' : 'Cesium ion';
+$('scene-select').onchange = (e) => {
+  const sc = SCENES[e.target.value]; e.target.value = '';
+  if (sc) realism.flyTo(sc);
+};
+setMode('real');
 document.querySelectorAll('#look button').forEach((b) => (b.onclick = () => {
   document.querySelectorAll('#look button').forEach((x) => x.classList.toggle('on', x === b));
   $('globe').className = b.dataset.l === 'none' ? '' : b.dataset.l;
@@ -482,7 +540,7 @@ setInterval(() => {
   tick++;
   stepFlights();
   if (!LOW_POWER || tick % 3 === 0) stepSats(); // phones: propagate every 3 s
-  followSelected(); renderInfo(); hud(); requestRender();
+  followSelected(); if (selected && ['flight', 'sat', 'quake'].includes(selected.kind)) renderInfo(); hud(); requestRender();
 }, 1000);
 setInterval(loadFlights, STATIC ? 20000 : 15000);
 setInterval(loadQuakes, 5 * 60000);
@@ -496,4 +554,7 @@ if (STATIC) {
   const fs = $('flight-source'); fs.innerHTML = '<option value="adsb">adsb.lol (görüş alanı)</option>';
 }
 hud(); loadFlights(); loadSats(); loadQuakes();
-window.godsEye = { viewer, flights, get sats() { return sats; }, quakes }; // handy for console debugging
+extras = createExtras({ viewer, LOW_POWER, STATIC, BASE, CORS_PROXY, $, fmt, escapeHtml, toast, feedStatus, requestRender });
+// PWA: installable app + offline shell (production builds only)
+if ('serviceWorker' in navigator && import.meta.env.PROD) window.addEventListener('load', () => navigator.serviceWorker.register(`${BASE}sw.js`, { scope: BASE }).catch((e) => console.warn('sw', e.message)));
+window.godsEye = { Cesium, realism, viewer, flights, get sats() { return sats; }, quakes }; // handy for console debugging
