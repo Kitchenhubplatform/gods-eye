@@ -29,11 +29,12 @@ export const TRT_STREAMS = [
   { id: 'trthaber', name: 'TRT Haber', url: 'https://tv-trthaber.medya.trt.com.tr/master.m3u8', kind: 'tv' },
   { id: 'trt1', name: 'TRT 1', url: 'https://tv-trt1.medya.trt.com.tr/master.m3u8', kind: 'tv' },
   { id: 'trtworld', name: 'TRT World', url: 'https://tv-trtworld.medya.trt.com.tr/master.m3u8', kind: 'tv' },
-  { id: 'radyohaber', name: 'TRT Radyo Haber', url: 'https://radio-trtradyohaber.live.trt.com.tr/master.m3u8', kind: 'radio' },
-  { id: 'trtfm', name: 'TRT FM', url: 'https://radio-trtfm.live.trt.com.tr/master.m3u8', kind: 'radio' },
-  { id: 'radyo3', name: 'TRT Radyo 3', url: 'https://radio-trtradyo3.live.trt.com.tr/master.m3u8', kind: 'radio' },
-  { id: 'nagme', name: 'TRT Nağme', url: 'https://radio-trtnagme.live.trt.com.tr/master.m3u8', kind: 'radio' },
-  { id: 'turku', name: 'TRT Türkü', url: 'https://radio-trtturku.live.trt.com.tr/master.m3u8', kind: 'radio' },
+  { id: 'radyohaber', name: 'TRT Radyo Haber', url: 'https://rd-trtradyohaber.medya.trt.com.tr/master.m3u8', kind: 'radio' },
+  { id: 'radyo1', name: 'TRT Radyo 1', url: 'https://rd-trtradyo1.medya.trt.com.tr/master.m3u8', kind: 'radio' },
+  { id: 'trtfm', name: 'TRT FM', url: 'https://rd-trtfm.medya.trt.com.tr/master.m3u8', kind: 'radio' },
+  { id: 'radyo3', name: 'TRT Radyo 3', url: 'https://rd-trtradyo3.medya.trt.com.tr/master.m3u8', kind: 'radio' },
+  { id: 'nagme', name: 'TRT Nağme', url: 'https://rd-trtnagme.medya.trt.com.tr/master.m3u8', kind: 'radio' },
+  { id: 'turku', name: 'TRT Türkü', url: 'https://rd-trtturku.medya.trt.com.tr/master.m3u8', kind: 'radio' },
 ];
 const NEWS = [
   { id: 'bbc', name: 'BBC Türkçe', url: 'https://feeds.bbci.co.uk/turkce/rss.xml' },
@@ -235,14 +236,16 @@ export function createExtras(ctx) {
   async function play(url, title) {
     media.hidden = false; $('media-title').textContent = title;
     if (hls) { hls.destroy(); hls = null; }
-    if (video.canPlayType('application/vnd.apple.mpegurl')) { video.src = url; }
-    else {
-      const { default: Hls } = await import('hls.js');
-      if (!Hls.isSupported()) return toast('Bu tarayıcı HLS oynatamıyor');
+    // Prefer hls.js (MSE) everywhere it works — Chrome's native HLS can't play TRT's audio-only radio streams;
+    // fall back to native HLS (older iOS Safari without MediaSource).
+    let Hls = null;
+    try { ({ default: Hls } = await import('hls.js')); } catch { /* offline chunk */ }
+    if (Hls?.isSupported()) {
       hls = new Hls({ lowLatencyMode: true, maxBufferLength: 20 });
       hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) { toast(`Yayın açılamadı: ${title}`); hls?.destroy(); hls = null; } });
       hls.loadSource(url); hls.attachMedia(video);
-    }
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) { video.src = url; }
+    else return toast('Bu tarayıcı HLS oynatamıyor');
     video.play().catch(() => {});
   }
   function stop() { if (hls) { hls.destroy(); hls = null; } video.pause(); video.removeAttribute('src'); video.load(); media.hidden = true; }
