@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#05080d" />
+  <title>GOD'S EYE · Küresel Gözlem Konsolu</title>
+  <meta name="description" content="Açık ve canlı verilerle 3D dünya: uçuşlar, uydular, depremler." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='none' stroke='%2300e5ff' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='9' fill='%2300e5ff'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <div id="loader">
+    <div class="ring"></div>
+    <div class="ltitle">GOD'S EYE</div>
+    <div id="loader-msg">Küre yükleniyor… / Loading globe…</div>
+    <div id="loader-err" hidden><b id="loader-err-title"></b><p id="loader-err-detail"></p><button onclick="location.reload()">YENİLE</button></div>
+  </div>
+  <script>
+    // Plain ES5 so it runs even where the main bundle can't: shows a loader and readable Turkish errors.
+    (function () {
+      var t0 = Date.now();
+      function show(title, detail) {
+        var e = document.getElementById('loader'); if (!e) return;
+        e.className = 'error'; e.style.display = 'flex';
+        document.getElementById('loader-msg').style.display = 'none';
+        document.getElementById('loader-err').hidden = false;
+        document.getElementById('loader-err-title').textContent = title;
+        document.getElementById('loader-err-detail').textContent = detail;
+      }
+      window.__gePageError = show;
+      window.__geReady = function () { var e = document.getElementById('loader'); if (e && e.className !== 'error') { e.className = 'done'; setTimeout(function () { e.style.display = 'none'; }, 400); } };
+      var c = document.createElement('canvas');
+      var gl = null; try { gl = c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl'); } catch (x) {}
+      if (!gl) show('WebGL bulunamadı', 'Bu tarayıcı/cihaz 3D grafik (WebGL) desteklemiyor veya kapalı. Güncel Chrome ya da Safari ile deneyin; Safari\'de Ayarlar › Safari › Gelişmiş › Özellikler bölümünde WebGL açık olmalı.');
+      window.addEventListener('error', function (ev) { if (ev && ev.message && document.getElementById('loader').className !== 'done') show('Uygulama başlatılamadı', ev.message); });
+      window.addEventListener('unhandledrejection', function (ev) { var m = ev && ev.reason && (ev.reason.message || ev.reason); if (document.getElementById('loader').className !== 'done') show('Uygulama başlatılamadı', String(m)); });
+      var slow = setInterval(function () {
+        var e = document.getElementById('loader'); if (!e || e.className) return clearInterval(slow);
+        var s = Math.round((Date.now() - t0) / 1000);
+        document.getElementById('loader-msg').textContent = s > 8 ? 'Küre yükleniyor… ' + s + ' sn (yavaş bağlantı, ~1 MB indiriliyor)' : 'Küre yükleniyor…';
+        if (s > 60) show('Yükleme çok uzun sürdü', 'Bağlantınızı kontrol edip sayfayı yenileyin.');
+      }, 1000);
+    })();
+  </script>
+  <div id="globe"></div>
+  <div id="scanlines"></div>
+
+  <header id="topbar">
+    <div class="brand"><span class="eye"></span>GOD'S EYE <small>// KÜRESEL GÖZLEM KONSOLU</small></div>
+    <form id="search" autocomplete="off">
+      <input id="search-input" placeholder="Ara: şehir, koordinat (41.01, 28.97), çağrı kodu, uydu…" />
+      <button type="submit">GİT</button>
+      <ul id="search-results" hidden></ul>
+    </form>
+    <div class="clock"><span id="utc">--:--:--</span> UTC</div>
+  </header>
+
+  <aside id="panel">
+    <section>
+      <h2>KATMANLAR <small>LAYERS</small></h2>
+      <label class="layer"><input type="checkbox" id="l-flights" checked /><span class="dot c-flight"></span>Uçuşlar <em id="n-flights">0</em></label>
+      <div class="sub">
+        <label>Kaynak <select id="flight-source"><option value="auto">Otomatik (OpenSky → adsb.lol)</option><option value="adsb">adsb.lol (görüş alanı)</option></select></label>
+        <label class="chk"><input type="checkbox" id="hide-ground" checked /> Yerdekileri gizle</label>
+      </div>
+      <label class="layer"><input type="checkbox" id="l-sats" checked /><span class="dot c-sat"></span>Uydular <em id="n-sats">0</em></label>
+      <div class="sub">
+        <label>Grup <select id="sat-group">
+          <option value="visual">En parlaklar (visual)</option>
+          <option value="stations">İstasyonlar (ISS, Tiangong)</option>
+          <option value="active" selected>Tüm aktif uydular</option>
+          <option value="starlink">Starlink</option>
+          <option value="gps-ops">GPS</option>
+          <option value="weather">Meteoroloji</option>
+          <option value="geo">Jeosenkron</option>
+          <option value="last-30-days">Son 30 gün fırlatılan</option>
+        </select></label>
+        <label class="chk"><input type="checkbox" id="sat-orbit" checked /> Seçilince yörünge çiz</label>
+      </div>
+      <label class="layer"><input type="checkbox" id="l-quakes" checked /><span class="dot c-quake"></span>Depremler (24s) <em id="n-quakes">0</em></label>
+      <div class="sub">
+        <label>Akış <select id="quake-feed"><option value="all_day" selected>Son 24 saat (tümü)</option><option value="2.5_day">Son 24 saat M2.5+</option><option value="4.5_week">Son 7 gün M4.5+</option><option value="significant_month">Son 30 gün önemli</option></select></label>
+      </div>
+    </section>
+    <section>
+      <h2>HARİTA <small>BASEMAP</small></h2>
+      <div class="seg" id="basemap">
+        <button data-b="dark" class="on">Karanlık</button><button data-b="sat">Uydu</button><button data-b="osm">OSM</button>
+      </div>
+      <h2>FİLTRE <small>SENSOR</small></h2>
+      <div class="seg" id="look">
+        <button data-l="none" class="on">Normal</button><button data-l="nvg">NVG</button><button data-l="flir">FLIR</button><button data-l="crt">CRT</button>
+      </div>
+    </section>
+    <section class="feeds">
+      <h2>AKIŞ DURUMU <small>FEEDS</small></h2>
+      <div id="feed-flights" class="feed">UÇUŞ · bekleniyor…</div>
+      <div id="feed-sats" class="feed">UYDU · bekleniyor…</div>
+      <div id="feed-quakes" class="feed">DEPREM · bekleniyor…</div>
+    </section>
+    <footer>Veri: OpenSky Network, adsb.lol, CelesTrak, USGS · Harita: Esri, © OpenStreetMap katkıcıları.<br/>Esinlenme: <a href="https://github.com/bilawalsidhu/gods-eye-view" target="_blank" rel="noopener">gods-eye-view</a> (MIT).</footer>
+  </aside>
+  <button id="panel-toggle" title="Paneli aç/kapat">☰</button>
+
+  <aside id="info" hidden>
+    <button id="info-close">×</button>
+    <div id="info-kind"></div>
+    <h3 id="info-title"></h3>
+    <dl id="info-body"></dl>
+    <div class="actions"><button id="info-track">TAKİP ET</button><button id="info-fly">YAKLAŞ</button></div>
+  </aside>
+
+  <div id="hud">
+    <div><b>✈</b> <span id="h-flights">0</span></div>
+    <div><b>◉</b> <span id="h-sats">0</span></div>
+    <div><b>◎</b> <span id="h-quakes">0</span></div>
+    <div class="cam" id="h-cam">--</div>
+  </div>
+  <div id="reticle"></div>
+  <div id="toast" hidden></div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

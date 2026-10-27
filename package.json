@@ -1,0 +1,26 @@
+{
+  "name": "gods-eye",
+  "version": "1.0.0",
+  "description": "G\u00f6z \u2014 a\u00e7\u0131k veriyle canl\u0131 3D k\u00fcre / live open-data 3D globe",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173",
+    "build:pages": "VITE_STATIC=1 BASE_PATH=/gods-eye/ vite build --outDir dist-pages && touch dist-pages/.nojekyll"
+  },
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "cesium": "^1.140.0",
+    "satellite.js": "^5.0.0"
+  },
+  "devDependencies": {
+    "vite": "^8.3.5",
+    "vite-plugin-static-copy": "^3.4.0"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=20.19"
+  }
+}
